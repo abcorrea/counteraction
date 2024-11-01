@@ -293,9 +293,9 @@ if __name__ == "__main__":
 
 
     counter = "lpcnt"
-    if args.fast:
+    if args.greedy:
         if args.bound != 0:
-            logging.error("Flag '--fast' only works with bound 0 (i.e., no bound).")
+            logging.error("Flag '--greedy' only works with bound 0 (i.e., no bound).")
             sys.exit(-1)
         counter = "lpcnt_nopp"
 

@@ -55,5 +55,5 @@ There are some extra options one can use:
 - `--choices`: enables the generation of choice rules during the counting (recommended)
 - `--bound`: bound used for the number of count actions *per action
   schema*. (Bound of 0 enumerates all actions.)
-- `--fast`: quickly estimates the number of ground actions. (Ignores the bound
-  and is not exact.)
+- `--greedy`: quickly estimates the number of ground actions. (Ignores the bound
+  and might give bounds much lower than real value.)

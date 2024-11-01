@@ -38,7 +38,7 @@ def parse_arguments():
     parser.add_argument('-c', '--choices', required=False, action="store_const", const=True, default=False, help="Enables the generation of choice rules.")
     parser.add_argument('-o', '--output', required=False, action="store_const", const=True, default=False, help="Enables the output of actions.")
     parser.add_argument('-b', '--bound', required=False, type=int, default=0, help="Bound for number of count actions per action schema. (Bound of 0 enumerates all actions.)")
-    parser.add_argument('--fast', required=False, action="store_const", const=True, default=False, help="Quickly estimate the number of ground actions. (Ignore the bound and not exact.)")
+    parser.add_argument('--greedy', required=False, action="store_const", const=True, default=False, help="Quickly estimate the number of ground actions. (Ignore the bound and might underestimate final value.)")
 
     args = parser.parse_args()
     if args.domain is None:
