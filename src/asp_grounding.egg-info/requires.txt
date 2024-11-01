@@ -1,0 +1,10 @@
+setuptools
+tarski@ git+ssh://git@github.com/aig-upf/tarski.git@33efb7e#egg=tarski-devel
+
+[dev]
+pytest
+tox
+
+[test]
+pytest
+tox

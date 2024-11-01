@@ -1,0 +1,21 @@
+Metadata-Version: 2.1
+Name: asp-grounding
+Version: 0.1
+Summary: Grounding planning tasks with ASP grounders
+Home-page: UNKNOWN
+Author: Augusto Blaas Corrêa and Guillem Francès
+Author-email: -
+License: UNKNOWN
+Description: # ASP to ground planning tasks
+Keywords: planning logic STRIPS
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Provides-Extra: dev
+Provides-Extra: test
