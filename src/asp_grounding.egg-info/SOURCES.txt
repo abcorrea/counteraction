@@ -1,7 +1,0 @@
-README.md
-setup.py
-src/asp_grounding.egg-info/PKG-INFO
-src/asp_grounding.egg-info/SOURCES.txt
-src/asp_grounding.egg-info/dependency_links.txt
-src/asp_grounding.egg-info/requires.txt
-src/asp_grounding.egg-info/top_level.txt
