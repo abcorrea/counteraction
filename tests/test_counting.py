@@ -10,7 +10,7 @@ from counting import Atom, counting_program, parse_action_schemas, parse_atoms
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(__file__).resolve().parent / "data"
-TASKS = ["gripper", "constants", "inequality", "conditional"]
+TASKS = ["gripper", "constants", "inequality", "conditional", "disjunctive"]
 
 
 def test_parse_atoms():
@@ -120,6 +120,8 @@ def test_known_counts(tmp_path):
     assert reference_count("inequality", tmp_path) == 6
     # mark: 2, use: 2
     assert reference_count("conditional", tmp_path) == 4
+    # pick(a), pick(b), pick(c); b satisfies both disjuncts but counts once.
+    assert reference_count("disjunctive", tmp_path) == 3
 
 
 def test_bound_gives_lower_bound(tmp_path):

@@ -86,20 +86,34 @@ class ActionSchema:
     name: str
     parameters: tuple
     preconditions: list = field(default_factory=list)
+    # Further precondition lists of copies of the action, e.g., one per
+    # disjunct of a disjunctive precondition. The groundings of the schema are
+    # the union of the groundings for each precondition list.
+    alternatives: list = field(default_factory=list)
+
+    def bodies(self):
+        return [self.preconditions, *self.alternatives]
 
 
 def parse_action_schemas(theory_lines):
-    """Extract the action applicability rules from a Datalog program."""
-    schemas = []
+    """Extract the action applicability rules from a Datalog program.
+
+    Rules with the same head (copies of an action) form a single schema.
+    """
+    schemas = {}
     for line in theory_lines:
         if not line.startswith(ACTION_PREFIX):
             continue
         # An action without parameters and preconditions is a fact.
         head, _, body = line.partition(":-")
         (head_atom,) = parse_atoms(head.strip().removesuffix("."))
-        body = body.strip().removesuffix(".")
-        schemas.append(ActionSchema(head_atom.predicate, head_atom.args, parse_atoms(body)))
-    return schemas
+        body = parse_atoms(body.strip().removesuffix("."))
+        key = (head_atom.predicate, head_atom.args)
+        if key in schemas:
+            schemas[key].alternatives.append(body)
+        else:
+            schemas[key] = ActionSchema(head_atom.predicate, head_atom.args, body)
+    return list(schemas.values())
 
 
 def guess_atom(variable):
@@ -113,6 +127,8 @@ def counting_program(schema):
     that satisfy every precondition containing X. The integrity constraints
     then check each precondition on the joint assignment.
     """
+    if schema.alternatives:
+        return union_counting_program(schema)
     positive = [atom for atom in schema.preconditions if not atom.inequality]
     variables = []
     for atom in positive:
@@ -140,6 +156,31 @@ def counting_program(schema):
             literals = [f"not {atom}"]
         literals += [guess_atom(variable) for variable in dict.fromkeys(atom.variables)]
         lines.append(f":- {', '.join(literals)}.")
+    return "\n".join(lines) + "\n"
+
+
+def union_counting_program(schema):
+    """Return a program whose answer sets are the groundings of any copy of the schema.
+
+    We guess the parameters only and require that the preconditions of at
+    least one copy hold. Other variables of a copy are existential.
+    """
+    bodies = schema.bodies()
+    lines = ["#show."]
+    for parameter in schema.parameters:
+        types = {
+            str(atom)
+            for body in bodies
+            for atom in body
+            if atom.predicate.startswith(TYPE_PREFIX) and atom.args == (parameter,)
+        }
+        lines.append(f"1 {{ {guess_atom(parameter)} : {','.join(sorted(types))} }} 1.")
+        lines.append(f"#show g_{parameter}/1.")
+    for index, body in enumerate(bodies):
+        guards = [guess_atom(p) for p in schema.parameters if any(p in a.args for a in body)]
+        literals = guards + [str(atom) for atom in body]
+        lines.append(f"alternative__{index} :- {', '.join(literals)}.")
+    lines.append(f":- {', '.join(f'not alternative__{i}' for i in range(len(bodies)))}.")
     return "\n".join(lines) + "\n"
 
 
@@ -356,7 +397,9 @@ class EliminationCounter:
     def prepare(self, model_file, schemas):
         from elimination import ColumnCache, load_relations
 
-        predicates = {atom.predicate for schema in schemas for atom in schema.preconditions}
+        predicates = {
+            atom.predicate for schema in schemas for body in schema.bodies() for atom in body
+        }
         self.relations = load_relations(model_file, predicates)
         self.cache = ColumnCache(self.relations)
 

@@ -274,12 +274,46 @@ def count_groundings(schema, relations, deadline, max_factor_size, cache=None):
 
     Returns the count and the induced width of the elimination orders.
 
+    The groundings of a schema with several copies are the union of the
+    groundings of each copy, which we count by inclusion-exclusion over
+    conjunctions of their preconditions.
+    """
+    cache = cache or ColumnCache(relations)
+    bodies = schema.bodies()
+    if len(bodies) > 1:
+        bodies = [
+            rename_local_variables(body, schema.parameters, index)
+            for index, body in enumerate(bodies)
+        ]
+    total = 0
+    width = 0
+    for size in range(1, len(bodies) + 1):
+        for subset in itertools.combinations(bodies, size):
+            atoms = [atom for body in subset for atom in body]
+            count, subset_width = count_conjunction(
+                atoms, relations, deadline, max_factor_size, cache
+            )
+            width = max(width, subset_width)
+            total += count if size % 2 else -count
+    return total, width
+
+
+def rename_local_variables(body, parameters, index):
+    """Rename the variables of a body that are not parameters, to keep copies apart."""
+    mapping = {
+        v: f"{v}__copy{index}" for atom in body for v in atom.variables if v not in parameters
+    }
+    return [Atom(atom.predicate, substitute(atom.args, mapping), atom.inequality) for atom in body]
+
+
+def count_conjunction(atoms, relations, deadline, max_factor_size, cache):
+    """Count the assignments that satisfy a conjunction of atoms.
+
     Inequalities are handled by inclusion-exclusion: we count with each subset
     of the inequalities turned into equalities.
     """
-    cache = cache or ColumnCache(relations)
-    positive = [atom for atom in schema.preconditions if not atom.inequality]
-    inequalities = [atom.args for atom in schema.preconditions if atom.inequality]
+    positive = [atom for atom in atoms if not atom.inequality]
+    inequalities = [atom.args for atom in atoms if atom.inequality]
     total = 0
     width = 0
     for size in range(len(inequalities) + 1):
@@ -287,10 +321,10 @@ def count_groundings(schema, relations, deadline, max_factor_size, cache=None):
             mapping = _merge(subset)
             if mapping is None:
                 continue  # Two different constants must be equal.
-            atoms = [Atom(atom.predicate, substitute(atom.args, mapping)) for atom in positive]
+            merged = [Atom(atom.predicate, substitute(atom.args, mapping)) for atom in positive]
             factors = [
                 atom_factor(atom.predicate, atom.args, relations[atom.predicate])
-                for atom in drop_implied_unary_atoms(atoms, cache)
+                for atom in drop_implied_unary_atoms(merged, cache)
             ]
             eliminator = Eliminator(deadline, max_factor_size)
             count = eliminator.count(factors)

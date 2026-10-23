@@ -1,0 +1,5 @@
+(define (problem disjunctive-1)
+  (:domain disjunctive)
+  (:objects a b c d - item)
+  (:init (red a) (red b) (big b) (big c))
+  (:goal (picked a)))
