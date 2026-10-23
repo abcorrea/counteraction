@@ -9,13 +9,11 @@ the elimination order.
 """
 
 import itertools
-import re
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
+from operator import itemgetter
 
-from counting import is_variable
-
-FACT_PATTERN = re.compile(r"(\w+)(?:\(([^)]*)\))?\.")
+from counting import Atom, is_variable
 
 # Check the deadline after this many steps of a join.
 CHECK_INTERVAL = 1 << 16
@@ -26,28 +24,35 @@ class TooExpensive(Exception):
 
 
 def load_relations(model_file, predicates):
-    """Read the facts of the given predicates from a model file."""
+    """Read the facts of the given predicates from a model file.
+
+    Each line of the file is a fact such as "p(a,b)." or "q.".
+    """
     relations = {predicate: set() for predicate in predicates}
     with open(model_file) as f:
         for line in f:
-            match = FACT_PATTERN.match(line)
-            if match is None:
-                continue
-            predicate, args = match.groups()
-            relation = relations.get(predicate)
-            if relation is not None:
-                relation.add(tuple(args.split(",")) if args else ())
+            predicate, parenthesis, args = line.partition("(")
+            if parenthesis:
+                relation = relations.get(predicate)
+                if relation is not None:
+                    relation.add(tuple(args.rstrip().removesuffix(").").split(",")))
+            else:
+                relation = relations.get(line.rstrip().removesuffix("."))
+                if relation is not None:
+                    relation.add(())
     return relations
 
 
 class Factor:
     """A function from assignments of the variables to positive counts."""
 
-    __slots__ = ("variables", "table")
+    __slots__ = ("variables", "table", "unit")
 
-    def __init__(self, variables, table):
+    def __init__(self, variables, table, unit=False):
         self.variables = variables
         self.table = table
+        # True if every count is 1, as in the factors of atoms.
+        self.unit = unit
 
     def __len__(self):
         return len(self.table)
@@ -58,7 +63,7 @@ def atom_factor(predicate, args, relation):
     variables = tuple(dict.fromkeys(arg for arg in args if is_variable(arg)))
     if len(variables) == len(args):
         # Fast path: distinct variables and no constants.
-        return Factor(variables, dict.fromkeys(relation, 1))
+        return Factor(variables, dict.fromkeys(relation, 1), unit=True)
     positions = [variables.index(arg) if is_variable(arg) else None for arg in args]
     table = {}
     for values in relation:
@@ -73,7 +78,24 @@ def atom_factor(predicate, args, relation):
                 break
         else:
             table[tuple(assignment)] = 1
-    return Factor(variables, table)
+    return Factor(variables, table, unit=True)
+
+
+def project(factor, keep):
+    """Return the table of the factor with all variables but those at *keep* summed out."""
+    table = factor.table
+    if not keep:
+        return {(): sum(table.values())}
+    if factor.unit:
+        # Count with C loops: every assignment contributes 1.
+        if len(keep) == 1:
+            counts = Counter(map(itemgetter(keep[0]), table))
+            return {(value,): count for value, count in counts.items()}
+        return dict(Counter(map(itemgetter(*keep), table)))
+    result = defaultdict(int)
+    for assignment, count in table.items():
+        result[tuple(assignment[i] for i in keep)] += count
+    return dict(result)
 
 
 class Eliminator:
@@ -83,6 +105,10 @@ class Eliminator:
         self.steps = 0
         # Induced width: largest number of variables in a bucket, minus one.
         self.width = 0
+
+    def check_deadline(self):
+        if time.monotonic() > self.deadline:
+            raise TooExpensive("time limit")
 
     def tick(self):
         self.steps += 1
@@ -120,13 +146,10 @@ class Eliminator:
         return Factor(tuple(variables[i] for i in keep), dict(table))
 
     def sum_out(self, factor, variable):
-        position = factor.variables.index(variable)
-        variables = factor.variables[:position] + factor.variables[position + 1 :]
-        table = defaultdict(int)
-        for assignment, count in factor.table.items():
-            self.tick()
-            table[assignment[:position] + assignment[position + 1 :]] += count
-        return Factor(variables, dict(table))
+        keep = [i for i, v in enumerate(factor.variables) if v != variable]
+        table = project(factor, keep)
+        self.check_deadline()
+        return Factor(tuple(factor.variables[i] for i in keep), table)
 
     def eliminate(self, factors, variable):
         """Multiply the factors that contain the variable and sum it out."""
@@ -148,6 +171,7 @@ class Eliminator:
             for factor in factors:
                 if not factor.table:
                     return 0
+            factors = self.project_private_variables(factors)
             remaining = {v for factor in factors for v in factor.variables}
             if not remaining:
                 break
@@ -159,6 +183,24 @@ class Eliminator:
             factors.append(self.eliminate(bucket, variable))
         for factor in factors:
             result *= factor.table.get((), 0)
+        return result
+
+    def project_private_variables(self, factors):
+        """Sum out, in one pass per factor, the variables that occur in no other factor."""
+        occurrences = defaultdict(int)
+        for factor in factors:
+            for variable in factor.variables:
+                occurrences[variable] += 1
+        result = []
+        for factor in factors:
+            keep = [i for i, v in enumerate(factor.variables) if occurrences[v] > 1]
+            if len(keep) == len(factor.variables):
+                result.append(factor)
+                continue
+            self.width = max(self.width, len(factor.variables) - 1)
+            table = project(factor, keep)
+            self.check_deadline()
+            result.append(Factor(tuple(factor.variables[i] for i in keep), table))
         return result
 
     @staticmethod
@@ -186,7 +228,48 @@ def substitute(args, mapping):
     return tuple(mapping.get(arg, arg) for arg in args)
 
 
-def count_groundings(schema, relations, deadline, max_factor_size):
+class ColumnCache:
+    """Cache the set of values in each column of each relation."""
+
+    def __init__(self, relations):
+        self.relations = relations
+        self.columns = {}
+
+    def column(self, predicate, position):
+        key = (predicate, position)
+        values = self.columns.get(key)
+        if values is None:
+            values = set(map(itemgetter(position), self.relations[predicate]))
+            self.columns[key] = values
+        return values
+
+
+def drop_implied_unary_atoms(atoms, cache):
+    """Remove unary atoms p(X) that hold for every value of X in another atom.
+
+    For example, a type atom is implied if X occurs in an atom whose relation
+    only contains objects of this type at the position of X. Such atoms do not
+    change the count, but they would make every variable occur in two factors.
+    """
+    result = []
+    for atom in atoms:
+        if len(atom.args) == 1 and atom.variables:
+            (variable,) = atom.variables
+            values = cache.column(atom.predicate, 0)
+            implied = any(
+                cache.column(other.predicate, position) <= values
+                for other in atoms
+                if len(other.args) > 1
+                for position, arg in enumerate(other.args)
+                if arg == variable
+            )
+            if implied:
+                continue
+        result.append(atom)
+    return result
+
+
+def count_groundings(schema, relations, deadline, max_factor_size, cache=None):
     """Count the groundings of a schema whose preconditions hold in the relations.
 
     Returns the count and the induced width of the elimination orders.
@@ -194,6 +277,7 @@ def count_groundings(schema, relations, deadline, max_factor_size):
     Inequalities are handled by inclusion-exclusion: we count with each subset
     of the inequalities turned into equalities.
     """
+    cache = cache or ColumnCache(relations)
     positive = [atom for atom in schema.preconditions if not atom.inequality]
     inequalities = [atom.args for atom in schema.preconditions if atom.inequality]
     total = 0
@@ -203,10 +287,11 @@ def count_groundings(schema, relations, deadline, max_factor_size):
             mapping = _merge(subset)
             if mapping is None:
                 continue  # Two different constants must be equal.
-            factors = []
-            for atom in positive:
-                args = substitute(atom.args, mapping)
-                factors.append(atom_factor(atom.predicate, args, relations[atom.predicate]))
+            atoms = [Atom(atom.predicate, substitute(atom.args, mapping)) for atom in positive]
+            factors = [
+                atom_factor(atom.predicate, atom.args, relations[atom.predicate])
+                for atom in drop_implied_unary_atoms(atoms, cache)
+            ]
             eliminator = Eliminator(deadline, max_factor_size)
             count = eliminator.count(factors)
             width = max(width, eliminator.width)

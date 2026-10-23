@@ -350,19 +350,23 @@ class EliminationCounter:
 
     def __init__(self):
         self.relations = None
+        self.cache = None
 
     def prepare(self, model_file, schemas):
-        from elimination import load_relations
+        from elimination import ColumnCache, load_relations
 
         predicates = {atom.predicate for schema in schemas for atom in schema.preconditions}
         self.relations = load_relations(model_file, predicates)
+        self.cache = ColumnCache(self.relations)
 
     def count(self, model_file, schema, program):
         from elimination import TooExpensive, count_groundings
 
         deadline = time.monotonic() + SCHEMA_TIME_LIMIT
         try:
-            count, width = count_groundings(schema, self.relations, deadline, self.MAX_FACTOR_SIZE)
+            count, width = count_groundings(
+                schema, self.relations, deadline, self.MAX_FACTOR_SIZE, self.cache
+            )
         except TooExpensive as error:
             logging.info(f"Variable elimination stopped: {error}")
             return CountResult(None, False)
