@@ -262,14 +262,14 @@ if __name__ == "__main__":
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
     command=[dir_path+'/src/translate/pddl_to_prolog.py', domain_file,
-             instance_file, '--only-output-direct-program',
+             instance_file,
              '--remove-action-predicates']
     execute(command, stdout=theory_output)
     logging.info("ASP model being copied to %s" % theory_output)
 
     # Produces extra theory file with actions
     command=[dir_path+'/src/translate/pddl_to_prolog.py', domain_file,
-                 instance_file, '--only-output-direct-program']
+                 instance_file]
     if args.inequality_rules:
         command.extend(['--inequality-rules'])
     execute(command, stdout=theory_output_with_actions)
