@@ -1,59 +1,79 @@
 # CounterAction
 
-Estimate the size of propositional planning tasks from a PDDL
-representation, without fully grounding them.
+CounterAction counts the actions of the propositional task that a grounder would
+produce from a PDDL task, without grounding it. Like Fast Downward's grounder,
+it counts the actions that are reachable in the delete relaxation of the task.
+If counting takes too long, it reports a lower bound.
 
-You can run counter action to get the *exact* number of actions or to quickly
-compute a lower bound.
+CounterAction works in two phases. First, it computes the relaxed reachable
+atoms with a Datalog program that has no action predicates (using `lpopt` and
+`gringo`). Second, for each action schema, it counts the groundings that are
+applicable in these atoms, either by enumerating them with `clingo` or with the
+model counter `d4`.
 
 ## Installation
 
-We recommend using a Python virtual environment. You need to use Python >= 3.7 to execute the scripts.  Once inside the virtual
-environment, you can run
+CounterAction needs Linux on x86-64 and [uv](https://docs.astral.sh/uv/). All
+other binaries (`clingo`, `gringo`, `lpopt`, `d4`, ...) are in `bin/`, and the
+Python code has no third-party dependencies.
 
 ```bash
-$ pip install -r requirements.txt
+uv sync
 ```
 
-while in the root directory of the repository. You also need to have the
-grounder you want to use in your PATH (see below).
-
-## Basic Usage
-
-The main script is `counter-action.py`. It firsts encodes the PDDL task as a
-Datalog program and then grounds it using off-the-shelf tools (`lpopt` and
-`gringo`). This encoding, however, does not represent actions. Then, it counts
-the *actions* of the task given a set of relaxed-reachable atoms (computed at
-the first phase).
-
-To run `counter-action.py`, execute
+## Usage
 
 ```bash
-$ ./counter-action.py -i /path/to/instance.pddl [-m MODEL-OUTPUT] [-t THEORY-OUTPUT]
+uv run counter-action.py -i /path/to/problem.pddl
 ```
 
-where `/path/to/instance.pddl` is the path to a *PDDL instance*. It is necessary
-that there is a PDDL domain file in the same directory as `instance.pddl`,
-though. The script will infer the domain file automatically or you can pass it
-with parameter `-d`.
+The domain file is found automatically if it follows the usual naming
+conventions (e.g., `domain.pddl` in the same directory); otherwise, pass it
+with `--domain`. You can also run the tool from another directory with
+`uv run --project /path/to/counteraction /path/to/counteraction/counter-action.py ...`.
 
-This setting provides an *exact* counting of the number of actions. However, in
-some domains, this might be slow. To get quick lower bound on the number of
-actions, see extra options below.
+The tool prints the count of each action schema and the total:
 
-## Extra Options
+```
+[12:00:00.000] INFO ::: # of actions: 36
+```
 
-There are some extra options one can use:
+A trailing `+` (e.g., `# of actions: 1000000+`) means that the number is a
+lower bound. In this case, the exit code is 10.
 
+### Options
 
-- `--domain`: PDDL domain file to be used (otherwise, domain file is inferred)
-- `--theory-with-actions-output`: one of the intermediate files produced is a Datalog
-  program containing the aciton predicates. This parameter indicates the name of
-  this intermediate file.
-- `--remove-files`: remove all intermediate files at the end of the execution
-- `--inequality-rules`: exploit inequality rules
-- `--choices`: enables the generation of choice rules during the counting (recommended)
-- `--bound`: bound used for the number of count actions *per action
-  schema*. (Bound of 0 enumerates all actions.)
-- `--greedy`: quickly estimates the number of ground actions. (Ignores the bound
-  and might give bounds much lower than real value.)
+- `--domain`: PDDL domain file (otherwise, the domain file is inferred).
+- `-b`, `--bound`: stop counting the actions of a schema after this many
+  actions. A bound of 0 (default) counts all actions.
+- `--greedy`: count with the model counter `d4` instead of enumerating. This
+  is much faster on some domains, but gives no count for a schema that `d4`
+  cannot finish. Requires bound 0.
+- `--inequality-rules`: use inequality preconditions such as
+  `(not (= ?x ?y))` when counting.
+- `-o`, `--output`: print the counted actions (not with `--greedy`).
+- `-m`, `--model-output`, `-t`, `--theory-output`,
+  `--theory-with-actions-output`: names of the intermediate files.
+- `-r`, `--remove-files`: remove the intermediate files at the end.
+- `-c`, `--choices`: deprecated; has no effect.
+
+Counting a single action schema is limited to 6 minutes and 4 GiB (see
+`SCHEMA_TIME_LIMIT` and `SCHEMA_MEMORY_LIMIT` in `counting.py`). If a schema
+reaches a limit, CounterAction moves on to the next one and reports a lower
+bound.
+
+## Development
+
+```bash
+uv sync                      # installs ruff, pytest, and pre-commit
+uv run pre-commit install    # runs ruff on every commit
+uv run pytest                # runs the tests
+uv run ruff check . && uv run ruff format --check .
+```
+
+The directory `src/translate` contains the PDDL parser and the Datalog encoding,
+adapted from the translator of [Fast Downward](https://www.fast-downward.org).
+
+## Experiments
+
+See [experiments/README.md](experiments/README.md).
