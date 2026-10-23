@@ -74,12 +74,20 @@ def parse_arguments(argv=None):
         help="Count with the model counter d4. Faster on some tasks, but "
         "returns no count for schemas it cannot finish. Requires bound 0.",
     )
+    parser.add_argument(
+        "--elimination",
+        action="store_true",
+        help="Count exactly by variable elimination over the relaxed reachable "
+        "atoms, without enumerating actions. Requires bound 0.",
+    )
 
     args = parser.parse_args(argv)
     if args.bound < 0:
         parser.error("The bound must be non-negative.")
     if args.greedy and args.bound != 0:
         parser.error("Flag '--greedy' only works with bound 0 (i.e., no bound).")
+    if args.elimination and (args.greedy or args.bound != 0 or args.output):
+        parser.error("Flag '--elimination' does not work with --greedy, --bound, or --output.")
     if args.greedy and args.output:
         parser.error("Flag '--output' does not work with '--greedy'.")
     if args.domain is None:

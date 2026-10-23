@@ -20,6 +20,7 @@ from counting import (
     ROOT,
     ClingoCounter,
     D4Counter,
+    EliminationCounter,
     count_actions,
     format_count,
     parse_action_schemas,
@@ -117,6 +118,8 @@ def main():
             schemas = parse_action_schemas(f)
         if args.greedy:
             counter = D4Counter()
+        elif args.elimination:
+            counter = EliminationCounter()
         else:
             counter = ClingoCounter(bound=args.bound, show_actions=args.output)
         total, exact = count_actions(args.model_output, schemas, counter)

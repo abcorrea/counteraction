@@ -94,7 +94,7 @@ def run_counter(task, tmp_path, *options):
 
 
 @pytest.mark.parametrize("task", TASKS)
-@pytest.mark.parametrize("options", [[], ["--bound", "1000"], ["--greedy"]])
+@pytest.mark.parametrize("options", [[], ["--bound", "1000"], ["--greedy"], ["--elimination"]])
 def test_count_matches_reference(task, options, tmp_path):
     count, exact, result = run_counter(task, tmp_path, *options)
     assert exact
@@ -102,7 +102,7 @@ def test_count_matches_reference(task, options, tmp_path):
     assert count == reference_count(task, tmp_path)
 
 
-@pytest.mark.parametrize("options", [[], ["--greedy"]])
+@pytest.mark.parametrize("options", [[], ["--greedy"], ["--elimination"]])
 def test_inequality_rules(options, tmp_path):
     count, exact, _ = run_counter("inequality", tmp_path, "--inequality-rules", *options)
     assert exact

@@ -17,6 +17,7 @@ import signal
 import subprocess
 import tempfile
 import threading
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -337,6 +338,38 @@ class D4Counter:
         return result
 
 
+class EliminationCounter:
+    """Count groundings exactly by variable elimination (see elimination.py).
+
+    The counter reads the relaxed reachable atoms once and counts every schema
+    in this process, without calling a solver.
+    """
+
+    # Largest intermediate factor (number of entries) before we give up.
+    MAX_FACTOR_SIZE = 5_000_000
+
+    def __init__(self):
+        self.relations = None
+
+    def prepare(self, model_file, schemas):
+        from elimination import load_relations
+
+        predicates = {atom.predicate for schema in schemas for atom in schema.preconditions}
+        self.relations = load_relations(model_file, predicates)
+
+    def count(self, model_file, schema, program):
+        from elimination import TooExpensive, count_groundings
+
+        deadline = time.monotonic() + SCHEMA_TIME_LIMIT
+        try:
+            count, width = count_groundings(schema, self.relations, deadline, self.MAX_FACTOR_SIZE)
+        except TooExpensive as error:
+            logging.info(f"Variable elimination stopped: {error}")
+            return CountResult(None, False)
+        logging.info(f"Variable elimination width: {width}")
+        return CountResult(count, True)
+
+
 def log_action(schema, model_line):
     values = {}
     for atom in parse_atoms(model_line):
@@ -351,6 +384,8 @@ def count_actions(model_file, schemas, counter):
     exact = True
     with open(model_file) as f:
         num_facts = sum(1 for _ in f)
+    if hasattr(counter, "prepare"):
+        counter.prepare(model_file, schemas)
     for schema in schemas:
         program = counting_program(schema)
         num_rules = program.count("\n")
