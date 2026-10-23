@@ -9,7 +9,7 @@ uv sync --group experiments
 ## Running
 
 The scripts run the configurations of the paper (`any`, `bound-1M`,
-`bound-500K`, `greedy`) with a limit of 30 minutes and 3872 MiB per task. On
+`bound-500K`, `greedy`, `elimination`) with a limit of 30 minutes and 3872 MiB per task. On
 the Basel cluster (sciCORE), they submit the runs to the `infai_1` partition,
 like the experiments in the paper. On any other machine, they run a small test
 suite locally.

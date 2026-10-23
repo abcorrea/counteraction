@@ -22,6 +22,7 @@ CONFIGS = {
     "bound-1M": ["--bound", "1000000"],
     "bound-500K": ["--bound", "500000"],
     "greedy": ["--greedy"],
+    "elimination": ["--elimination"],
 }
 
 

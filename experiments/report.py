@@ -28,7 +28,7 @@ OLD_NAMES = {
     "baseline-LPCNT_500K_BIN_PATH": "bound-500K",
     "baseline-LPCNT_BIN_PATH": "greedy",
 }
-ALGORITHMS = ["CHH+", "any", "bound-1M", "bound-500K", "greedy"]
+ALGORITHMS = ["CHH+", "any", "bound-1M", "bound-500K", "greedy", "elimination"]
 COUNTERS = ALGORITHMS[1:]
 
 # Domains of the HTG benchmark grouped as in the paper.
@@ -102,7 +102,8 @@ def coverage(runs):
 
 
 def time_per_domain(runs):
-    algorithms = ["CHH+", "any", "bound-1M", "greedy"]
+    present = {algorithm for task in runs.values() for algorithm in task}
+    algorithms = [a for a in ["CHH+", "any", "bound-1M", "greedy", "elimination"] if a in present]
     common = {
         key: task
         for key, task in runs.items()
@@ -174,7 +175,8 @@ def compare_encodings(runs, original, split):
     for (domain, problem), task in runs.items():
         if domain == original:
             other = runs.get((split, problem), {})
-            count, split_count = task.get("any", (None,))[0], other.get("any", (None,))[0]
+            config = "elimination" if "elimination" in task else "any"
+            count, split_count = task.get(config, (None,))[0], other.get(config, (None,))[0]
             if count and split_count:
                 pairs.append(count / split_count)
     if pairs:
