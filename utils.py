@@ -75,6 +75,12 @@ def parse_arguments(argv=None):
         "returns no count for schemas it cannot finish. Requires bound 0.",
     )
     parser.add_argument(
+        "--lpopt",
+        action="store_true",
+        help="Split the rules of the Datalog program with lpopt (as in the experiments "
+        "of 2024) instead of the size-aware decomposition.",
+    )
+    parser.add_argument(
         "--elimination",
         action="store_true",
         help="Count exactly by variable elimination over the relaxed reachable "

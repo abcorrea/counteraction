@@ -147,3 +147,26 @@ def test_time_limit_gives_lower_bound(tmp_path, monkeypatch):
     result = counting.ClingoCounter().count(model, schema, counting_program(schema))
     assert not result.exact
     assert 0 < result.count < 30**6
+
+
+def test_decomposition_avoids_large_auxiliary_atoms():
+    from decompose import decompose
+
+    program = [
+        "truck(t1).\n",
+        "city(c1).\n",
+        *[f"location(l{i}).\n" for i in range(10)],
+        "at(Var_t,Var_to) :- truck(Var_t),location(Var_to),at(Var_t,Var_from),"
+        "location(Var_from),in_city(Var_from,Var_c),in_city(Var_to,Var_c),city(Var_c).\n",
+    ]
+    rules = [line for line in decompose(program) if ":-" in line]
+    # Eliminate Var_from first: an atom over (Var_c, Var_t), not over pairs of locations.
+    assert rules[0].startswith("aux__0(Var_c,Var_t) :- ")
+    # No atom that copies the head.
+    assert len(rules) == 2
+
+
+def test_lpopt_option(tmp_path):
+    count, exact, _ = run_counter("gripper", tmp_path, "--lpopt")
+    assert exact
+    assert count == 36

@@ -26,6 +26,7 @@ from counting import (
     parse_action_schemas,
     remove_silently,
 )
+from decompose import decompose
 from utils import parse_arguments
 
 TRANSLATOR = ROOT / "src" / "translate" / "pddl_to_prolog.py"
@@ -58,14 +59,20 @@ def translate(domain_file, instance_file, output_file, extra_options):
     run_to_file(command, output_file, "Translating the task")
 
 
-def rewrite_with_lpopt(theory_file):
+def split_rules(theory_file, use_lpopt):
     """Rewrite the rules of the theory in place to make grounding cheaper."""
     directory = os.path.dirname(os.path.abspath(theory_file))
     with tempfile.NamedTemporaryFile(dir=directory, delete=False) as temporary:
         temporary_file = temporary.name
     try:
-        command = [str(BIN_DIR / "lpopt"), "-f", theory_file]
-        run_to_file(command, temporary_file, "Rewriting the theory with lpopt")
+        if use_lpopt:
+            command = [str(BIN_DIR / "lpopt"), "-f", theory_file]
+            run_to_file(command, temporary_file, "Rewriting the theory with lpopt")
+        else:
+            with open(theory_file) as f:
+                lines = decompose(f)
+            with open(temporary_file, "w") as f:
+                f.write("\n".join(lines) + "\n")
         os.replace(temporary_file, theory_file)
     finally:
         remove_silently(temporary_file)
@@ -111,7 +118,7 @@ def main():
         logging.info(f"ASP model being copied to {args.theory_output}")
         logging.info(f"ASP model *with actions* being copied to {args.theory_with_actions_output}")
 
-        rewrite_with_lpopt(args.theory_output)
+        split_rules(args.theory_output, args.lpopt)
         compute_reachable_atoms(args.theory_output, args.model_output)
 
         with open(args.theory_with_actions_output) as f:

@@ -6,8 +6,8 @@ it counts the actions that are reachable in the delete relaxation of the task.
 If counting takes too long, it reports a lower bound.
 
 CounterAction works in two phases. First, it computes the relaxed reachable
-atoms with a Datalog program that has no action predicates (using `lpopt` and
-`gringo`). Second, for each action schema, it counts the groundings that are
+atoms with a Datalog program that has no action predicates: it splits long
+rules with a size-aware decomposition and grounds the program with `gringo`. Second, for each action schema, it counts the groundings that are
 applicable in these atoms: by enumerating them with `clingo`, with the model
 counter `d4`, or by variable elimination (`--elimination`).
 
@@ -53,6 +53,8 @@ lower bound. In this case, the exit code is 10.
   reachable atoms. The groundings of a schema are the answers of a conjunctive
   query, which we count without enumerating them; the time is exponential only
   in the width of the precondition hypergraph. Requires bound 0.
+- `--lpopt`: split the rules with `lpopt` instead of the size-aware
+  decomposition (as in the experiments of 2024).
 - `--inequality-rules`: use inequality preconditions such as
   `(not (= ?x ?y))` when counting.
 - `-o`, `--output`: print the counted actions (not with `--greedy`).
