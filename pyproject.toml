@@ -1,0 +1,10 @@
+[project]
+name = "counteraction"
+version = "0.2.0"
+description = "Count the ground actions of a PDDL planning task without grounding it."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv]
+package = false

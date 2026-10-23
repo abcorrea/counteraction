@@ -13,8 +13,6 @@ import uuid
 
 from subprocess import Popen, PIPE
 
-from tarski.reachability import create_reachability_lp, run_clingo
-from tarski.utils.command import silentremove, execute
 
 from utils import *
 
@@ -25,6 +23,18 @@ logging.basicConfig(
     datefmt='%H:%M:%S'
 )
 logger = logging.getLogger(__name__)
+
+
+def execute(command, stdout):
+    with open(stdout, "w") as output:
+        return subprocess.call(command, stdout=output)
+
+
+def silentremove(filename):
+    try:
+        os.remove(filename)
+    except FileNotFoundError:
+        pass
 
 
 class ActionsCounter:

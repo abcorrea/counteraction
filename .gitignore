@@ -1,1 +1,13 @@
 *~
+__pycache__/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Intermediate files of counter-action.py
+output.model
+output.theory
+output-with-actions.theory
+
+# Experiment data
+experiments/data/
