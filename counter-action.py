@@ -104,11 +104,11 @@ def main():
 
     output_files = [args.model_output, args.theory_output, args.theory_with_actions_output]
     try:
-        translate(args.domain, args.instance, args.theory_output, ["--remove-action-predicates"])
+        options = ["--with-actions-output", args.theory_with_actions_output]
+        if args.inequality_rules:
+            options.append("--inequality-rules")
+        translate(args.domain, args.instance, args.theory_output, options)
         logging.info(f"ASP model being copied to {args.theory_output}")
-
-        options = ["--inequality-rules"] if args.inequality_rules else []
-        translate(args.domain, args.instance, args.theory_with_actions_output, options)
         logging.info(f"ASP model *with actions* being copied to {args.theory_with_actions_output}")
 
         rewrite_with_lpopt(args.theory_output)

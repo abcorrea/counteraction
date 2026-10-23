@@ -15,6 +15,13 @@ def parse_args():
         help="remove action predicates from logic program",
     )
     argparser.add_argument(
+        "--with-actions-output",
+        dest="with_actions_output",
+        default=None,
+        help="also write the program with action predicates to this file, "
+        "and print the program without action predicates",
+    )
+    argparser.add_argument(
         "--inequality-rules",
         dest="inequality_rules",
         action="store_true",

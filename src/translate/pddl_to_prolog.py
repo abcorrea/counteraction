@@ -223,10 +223,28 @@ def translate(task):
     return prog
 
 
+def write_both_programs(task, with_actions_file):
+    """Write the program with action predicates to a file and print the one without.
+
+    Inequalities (--inequality-rules) only go into the program with action
+    predicates, which is used for counting.
+    """
+    prog = translate(task)
+    with open(with_actions_file, "w") as f:
+        prog.dump_sanitized(f)
+    if options.inequality_rules:
+        options.inequality_rules = False
+        prog = translate(task)
+    prog.remove_action_predicates()
+    prog.dump_sanitized()
+
+
 if __name__ == "__main__":
     import pddl_parser
 
     task = pddl_parser.open()
     normalize.normalize(task)
-    prog = translate(task)
-    prog.dump_sanitized()
+    if options.with_actions_output:
+        write_both_programs(task, options.with_actions_output)
+    else:
+        translate(task).dump_sanitized()
