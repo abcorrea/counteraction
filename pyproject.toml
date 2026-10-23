@@ -6,5 +6,42 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
 
+[dependency-groups]
+dev = [
+    "pre-commit>=3.5",
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["bin"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+]
+
+[tool.ruff.lint.isort]
+# The translator modules import each other as top-level modules.
+known-first-party = ["counting", "utils", "normalize", "options", "pddl", "pddl_parser", "graph"]
+
+[tool.ruff.lint.per-file-ignores]
+# Re-exports of the package interface.
+"__init__.py" = ["F401"]
+# The translator is adapted from Fast Downward; keep its string formatting.
+"src/translate/**" = ["UP031"]

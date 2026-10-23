@@ -1,0 +1,6 @@
+(define (problem inequality-1)
+  (:domain inequality)
+  (:objects n1 n2 n3 - node)
+  (:init (edge n1 n1) (edge n1 n2) (edge n2 n3)
+         (loop n1 n1 n2) (loop n1 n2 n3) (loop n2 n2 n3) (loop n3 n3 n3))
+  (:goal (visited n3)))

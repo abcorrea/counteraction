@@ -1,0 +1,5 @@
+(define (problem conditional-1)
+  (:domain conditional)
+  (:objects a b c - item)
+  (:init (has a) (has b))
+  (:goal (used a)))

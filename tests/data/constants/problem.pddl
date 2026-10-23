@@ -1,0 +1,6 @@
+(define (problem constants-1)
+  (:domain constants)
+  (:objects l1 l2 l3 - loc o1 o2 - obj)
+  (:init (link l1 l2 depot) (link l2 l1 depot) (link l1 l3 l2)
+         (at o1 depot) (at o2 l1) (at pkg l1) (go))
+  (:goal (started)))
