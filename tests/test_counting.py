@@ -29,13 +29,16 @@ def test_parse_action_schemas():
         "action_go(Var_x) :- pddl_type_t(Var_x),at(Var_x),ready.\n",
         "at(Var_x) :- action_go(Var_x).\n",
         "action_start :- go.\n",
+        "action_reset.\n",
     ]
-    go, start = parse_action_schemas(theory)
+    go, start, reset = parse_action_schemas(theory)
     assert go.name == "action_go"
     assert go.parameters == ("Var_x",)
     assert [str(atom) for atom in go.preconditions] == ["pddl_type_t(Var_x)", "at(Var_x)", "ready"]
     assert start.name == "action_start"
     assert start.parameters == ()
+    assert reset.name == "action_reset"
+    assert reset.preconditions == []
 
 
 def test_counting_program_checks_constants_and_ground_atoms():

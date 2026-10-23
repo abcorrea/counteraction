@@ -94,8 +94,9 @@ def parse_action_schemas(theory_lines):
     for line in theory_lines:
         if not line.startswith(ACTION_PREFIX):
             continue
-        head, body = line.split(":-", 1)
-        (head_atom,) = parse_atoms(head)
+        # An action without parameters and preconditions is a fact.
+        head, _, body = line.partition(":-")
+        (head_atom,) = parse_atoms(head.strip().removesuffix("."))
         body = body.strip().removesuffix(".")
         schemas.append(ActionSchema(head_atom.predicate, head_atom.args, parse_atoms(body)))
     return schemas
