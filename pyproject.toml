@@ -18,6 +18,8 @@ experiments = [
 
 [tool.uv]
 package = false
+# Lab is needed to run the scripts in experiments/ with a plain `uv run`.
+default-groups = ["dev", "experiments"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

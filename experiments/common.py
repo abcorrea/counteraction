@@ -1,7 +1,6 @@
 """Shared setup of the CounterAction experiments with Downward Lab."""
 
 import os
-import platform
 import sys
 from pathlib import Path
 
@@ -27,20 +26,27 @@ CONFIGS = {
 
 
 def running_on_cluster():
-    node = platform.node()
-    return node.endswith((".scicore.unibas.ch", ".cluster.bc2.ch"))
+    return BaselSlurmEnvironment.is_present()
 
 
 def build_experiment(benchmarks_dir, suite, local_suite, configs=CONFIGS):
     """Create an experiment that runs each configuration on each task.
 
-    On the Basel cluster, the experiment uses the full suite on the infai_1
-    partition (AMD EPYC 7742), like the experiments of the paper. Elsewhere, it
-    runs the small local suite to test the setup.
+    On the Basel cluster, the experiment uses the full suite on the infai_3
+    partition. (The experiments of Submission 217 ran on infai_1, which no
+    longer exists, so their times are not comparable with new runs.) Elsewhere,
+    it runs the small local suite to test the setup.
     """
     if running_on_cluster():
         environment = BaselSlurmEnvironment(
-            partition="infai_1", email=os.environ.get("EMAIL"), export=["PATH"]
+            partition="infai_3",
+            email=os.environ.get("EMAIL"),
+            # As in our other infai_3 experiments: two CPUs (one physical core)
+            # and 4 GiB each per task, and at most 12 hours per Slurm task.
+            memory_per_cpu="4G",
+            cpus_per_task=2,
+            time_limit_per_task="12:00:00",
+            export=["PATH"],
         )
     else:
         environment = LocalEnvironment(processes=2)

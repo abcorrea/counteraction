@@ -71,7 +71,7 @@ bound.
 ## Development
 
 ```bash
-uv sync                      # installs ruff, pytest, and pre-commit
+uv sync                      # installs ruff, pytest, pre-commit, and Lab
 uv run pre-commit install    # runs ruff on every commit
 uv run pytest                # runs the tests
 uv run ruff check . && uv run ruff format --check .

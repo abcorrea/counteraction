@@ -267,6 +267,7 @@ wheels = [
 name = "counteraction"
 version = "0.2.0"
 source = { virtual = "." }
+default-groups = ["dev", "experiments"]
 
 [package.dev-dependencies]
 dev = [
